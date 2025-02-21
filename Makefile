@@ -153,6 +153,7 @@ UPROGS=\
 	$U/_pingpong\
 	$U/_primes\
 	$U/_find\
+	$U/_xargs\
 
 ifeq ($(LAB),syscall)
 UPROGS += \
@@ -161,7 +162,7 @@ UPROGS += \
 endif
 
 ifeq ($(LAB),trap)
-UPROGS += \
+UPROGS += \#
 	$U/_call\
 	$U/_alarmtest
 endif
