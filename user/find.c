@@ -26,7 +26,7 @@ void find(char* path, char* target) {
     }
     
     // 判断文件类型
-    switch (st.type){
+    switch(st.type){
         // 文件
         case T_FILE:
             // 判断path中最后面target长度的内容是否和target一致
@@ -43,7 +43,7 @@ void find(char* path, char* target) {
                 break;
             }
             strcpy(buf, path);
-            p = buf + sizeof buf;
+            p = buf + strlen(buf);
             *p++ = '/';
 
             while(read(fd, &de, sizeof de) == sizeof de) {
@@ -52,7 +52,7 @@ void find(char* path, char* target) {
                 
                 memmove(p, de.name, DIRSIZ);
                 p[DIRSIZ] = 0;
-                if(fstat(fd, &st) < 0) {
+                if(stat(buf, &st) < 0) {
                     printf("find: cannot stat %s\n", buf);
                     continue;
                 }
@@ -60,7 +60,6 @@ void find(char* path, char* target) {
                     find(buf, target);
                 }
             }
-
             break;
     }
     close(fd);
