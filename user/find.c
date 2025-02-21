@@ -42,20 +42,27 @@ void find(char* path, char* target) {
                 printf("find: path too long\n");
                 break;
             }
-            strcpy(buf, path);
-            p = buf + strlen(buf);
-            *p++ = '/';
+            
+            strcpy(buf, path);      // 将当前路径复制到 buf 缓冲区
+            p = buf + strlen(buf);  // 设置指针 p 为 buf 字符串的末尾
+            *p++ = '/';             // 在路径末尾加上斜杠 /
 
+            // 读取目录中的每一项,直到读取完所有项.每次读取一个 dirent 结构体(即一个目录项)
             while(read(fd, &de, sizeof de) == sizeof de) {
+                // 如果目录项的 inode 为 0，表示该项为空，跳过此项
                 if(de.inum == 0)
                     continue;
+
+                // 将目录项的文件名复制到缓冲区 buf 中
+                memmove(p, de.name, DIRSIZ);    // 将 de.name 中的最多 DIRSIZ 字节的数据（即当前目录项的文件名）复制到 buf 中 p 指向的位置
+                p[DIRSIZ] = 0;                  // 确保字符串以 \0 结尾
                 
-                memmove(p, de.name, DIRSIZ);
-                p[DIRSIZ] = 0;
+                // 获取当前目录项（即子目录或文件）的状态,如果获取失败,打印错误信息并跳过该项
                 if(stat(buf, &st) < 0) {
                     printf("find: cannot stat %s\n", buf);
                     continue;
                 }
+                // 排除当前目录 . 和父目录 .. 不对这两个特殊目录进行递归查找
                 if(strcmp(buf + strlen(buf) - 2, "/.") != 0 && strcmp(buf + strlen(buf) - 3, "/..") != 0) {
                     find(buf, target);
                 }
