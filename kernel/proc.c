@@ -694,3 +694,16 @@ procdump(void)
     printf("\n");
   }
 }
+
+void kama_procnum(uint64* dst) {
+  *dst = 0;
+  struct proc* p;           // struct proc 是描述进程信息的结构体，通常包含进程的状态、PID、优先级、内存等信息
+  // proc 是一个进程表，通常是一个数组，用来存储系统中的所有进程。NPROC 是系统中进程表的最大容量（即最大进程数）
+  // 初始化指针 p 为进程表的起始位置 (proc)，然后通过 p++ 遍历进程表中的每个进程，直到 p 达到进程表的结束位置（即 &proc[NPROC]，表示进程表末尾的指针）
+  // 遍历过程中，p 将指向每个 struct proc 类型的元素，即每个进程的信息
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if(p->state != UNUSED) {
+      (*dst)++;
+    }
+  }
+}

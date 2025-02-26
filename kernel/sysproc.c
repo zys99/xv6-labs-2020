@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -103,5 +104,25 @@ sys_trace(void)
   if(argint(0, &mask) < 0)              // 获取用户输入
     return -1;
   myproc()->kama_syscall_trace = mask;  // 设置调用进程的kama_syscall_trace
+  return 0;
+}
+
+uint64
+sys_sysinfo(void) {
+  struct sysinfo info;
+  kama_freebytes(&info.freemem);
+  kama_procnum(&info.nproc);
+
+  uint64 dstaddr;
+  argaddr(0, &dstaddr);     // 第一个参数的值，并将该值存储到 dstaddr 变量中
+  
+  // 内核空间复制到用户空间
+  // myproc()->pagetable 当前进程的页表
+  // dstaddr 目标地址
+  // (char*)&info 源地址 copyout 需要处理字节流，因此它要求源数据为字节指针（char* 类型）
+  // sizeof info 数据大小
+  if(copyout(myproc()->pagetable, dstaddr, (char*)&info, sizeof info) < 0) {
+    return -1;
+  }
   return 0;
 }

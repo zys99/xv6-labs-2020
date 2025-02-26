@@ -80,3 +80,17 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// 获取空闲内存
+void 
+kama_freebytes(uint64* dst) {
+  *dst = 0;
+  struct run* p = kmem.freelist;  // 初始化指针 p 指向空闲内存块链表的头
+
+  acquire(&kmem.lock);    // 加锁保证线程安全
+  while(p) {
+    *dst += PGSIZE;       // 累加每个空闲内存块的大小（每个块的大小为 PGSIZE）
+    p = p->next;    
+  }
+  release(&kmem.lock);    // 释放锁，允许其他线程访问
+}
