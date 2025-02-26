@@ -23,7 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-
+int trace(int);         // trace 系统调用入口函数
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

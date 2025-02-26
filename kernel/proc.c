@@ -126,7 +126,7 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
+  p->kama_syscall_trace = 0;      // 创建新进程时，默认设置为0
   return p;
 }
 
@@ -297,6 +297,7 @@ fork(void)
 
   release(&np->lock);
 
+  np->kama_syscall_trace = p->kama_syscall_trace;   //  子进程继承父进程的  kama_syscall_trace
   return pid;
 }
 
