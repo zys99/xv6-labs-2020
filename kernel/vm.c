@@ -440,3 +440,34 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+int kama_pgtbl_print(pagetable_t pagetable, int depth) {
+  // 准备遍历当前页表的512个PTE
+  for(int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+
+    // 当前页表有效
+    if(pte & PTE_V) {
+      // 打印层级标号
+      printf("..");
+      for(int j = 0; j < depth; j++) {
+        printf(" ..");
+      }
+      // 打印PTE编号, pte内容 pte对应物理地址
+      printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
+
+      // 若该节点不是叶子节点，则递归打印子节点
+      if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+        // 取出叶子节点的物理地址
+        uint64 child = PTE2PA(pte);
+        kama_pgtbl_print((pagetable_t)child, depth + 1);
+      }
+    }
+  }
+  return 0;
+}
+
+int kama_vmprint(pagetable_t pagetable) {
+  printf("page table %p\n", pagetable);
+  return kama_pgtbl_print(pagetable, 0);
+}
