@@ -457,6 +457,7 @@ int kama_pgtbl_print(pagetable_t pagetable, int depth) {
       printf("%d: pte %p pa %p\n", i, pte, PTE2PA(pte));
 
       // 若该节点不是叶子节点，则递归打印子节点
+      // 如果 PTE 没有 PTE_R（读）、PTE_W（写）、PTE_X（执行）权限，说明它仍然是一个中间页表，而不是最终指向数据的页表。
       if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
         // 取出叶子节点的物理地址
         uint64 child = PTE2PA(pte);
