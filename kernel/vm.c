@@ -55,7 +55,7 @@ void kama_kvmmap_pagetable(pagetable_t pagetable) {
   kvmmap(pagetable, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
 
   // CLINT
-  kvmmap(pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
+  // kvmmap(pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
 
   // PLIC
   kvmmap(pagetable, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
@@ -83,6 +83,7 @@ kama_kvminit_newpgtbl() {
 void kvminit() {
   // 全局内核页表仍使用此函数来初始化
   kernel_pagetable = kama_kvminit_newpgtbl();
+  kvmmap(kernel_pagetable, CLINT, CLINT, 0x10000, PTE_R | PTE_W);
 }
 
 
@@ -443,23 +444,24 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
-  uint64 n, va0, pa0;
+  // uint64 n, va0, pa0;
 
-  while(len > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > len)
-      n = len;
-    memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+  // while(len > 0){
+  //   va0 = PGROUNDDOWN(srcva);
+  //   pa0 = walkaddr(pagetable, va0);
+  //   if(pa0 == 0)
+  //     return -1;
+  //   n = PGSIZE - (srcva - va0);
+  //   if(n > len)
+  //     n = len;
+  //   memmove(dst, (void *)(pa0 + (srcva - va0)), n);
 
-    len -= n;
-    dst += n;
-    srcva = va0 + PGSIZE;
-  }
-  return 0;
+  //   len -= n;
+  //   dst += n;
+  //   srcva = va0 + PGSIZE;
+  // }
+  // return 0;
+  return copyin_new(pagetable, dst, srcva, len);
 }
 
 // Copy a null-terminated string from user to kernel.
@@ -469,40 +471,41 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 int
 copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 {
-  uint64 n, va0, pa0;
-  int got_null = 0;
+  // uint64 n, va0, pa0;
+  // int got_null = 0;
 
-  while(got_null == 0 && max > 0){
-    va0 = PGROUNDDOWN(srcva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    n = PGSIZE - (srcva - va0);
-    if(n > max)
-      n = max;
+  // while(got_null == 0 && max > 0){
+  //   va0 = PGROUNDDOWN(srcva);
+  //   pa0 = walkaddr(pagetable, va0);
+  //   if(pa0 == 0)
+  //     return -1;
+  //   n = PGSIZE - (srcva - va0);
+  //   if(n > max)
+  //     n = max;
 
-    char *p = (char *) (pa0 + (srcva - va0));
-    while(n > 0){
-      if(*p == '\0'){
-        *dst = '\0';
-        got_null = 1;
-        break;
-      } else {
-        *dst = *p;
-      }
-      --n;
-      --max;
-      p++;
-      dst++;
-    }
+  //   char *p = (char *) (pa0 + (srcva - va0));
+  //   while(n > 0){
+  //     if(*p == '\0'){
+  //       *dst = '\0';
+  //       got_null = 1;
+  //       break;
+  //     } else {
+  //       *dst = *p;
+  //     }
+  //     --n;
+  //     --max;
+  //     p++;
+  //     dst++;
+  //   }
 
-    srcva = va0 + PGSIZE;
-  }
-  if(got_null){
-    return 0;
-  } else {
-    return -1;
-  }
+  //   srcva = va0 + PGSIZE;
+  // }
+  // if(got_null){
+  //   return 0;
+  // } else {
+  //   return -1;
+  // }
+  return copyinstr_new(pagetable, dst, srcva, max);
 }
 
 int kama_pgtbl_print(pagetable_t pagetable, int depth) {
@@ -552,4 +555,49 @@ void kama_kvm_free_kernelpgtbl(pagetable_t pgtbl) {
   }
   // 子页面释放完, 释放当前级别页表所占用空间
   kfree((void*)pgtbl);
+}
+
+// 将src页表的一部分页映射关系 拷贝到dst页表中, 只拷贝页表项, 不拷贝实际的物理内存
+// start 起始虚拟地址（uint64）
+int
+kama_kvmcopymappings(pagetable_t src, pagetable_t dst, uint64 start, uint64 sz) {
+  int i;
+  // 循环遍历页
+  for(i = PGROUNDUP(start); i < start + sz; i += PGSIZE) {
+    pte_t* pte;
+    if((pte = walk(src, i, 0)) == 0) {    // 在 src 页表中查找虚拟地址 i 对应的页表项（PTE）
+      panic("kvmcopymappings: pte should exist"); // pte == 0，表示该页表项不存在，触发 panic（说明 src 页表应该已经映射了该页，但找不到页表项
+    }
+    if((*pte & PTE_V) == 0) {            // 如果 PTE 没有 PTE_V（有效位），说明该页没有映射，触发 panic。
+      panic("kvmcopymappings: pte not present");
+    }
+    uint64 pa = PTE2PA(*pte);
+    
+    // & ~PTE_U 表示将该页的权限设置为非用户页
+    int flag = PTE_FLAGS(*pte) & ~(PTE_U);   
+    // 必须设置该权限，因为RISC-V 中内核是无法直接访问用户页的
+    // 将 src 页表的映射复制到 dst
+    if(mappages(dst, i, PGSIZE, pa, flag) != 0) {       // 在 dst 页表中，将 i 地址映射到物理地址 pa
+      goto err;
+    }
+  }
+    return 0;
+  err:  // err 处理：回滚已映射的页
+    // 取消 dst 页表中从 PGROUNDUP(start) 开始的映射 释放 i - PGROUNDUP(start) 这段范围的映射
+    uvmunmap(dst, PGROUNDUP(start), (i - PGROUNDUP(start)) / PGSIZE, 0);  
+    return -1;
+}
+
+// 与 uvmdealloc 功能类似，将程序内存从 oldsz 缩减到 newsz，但不释放实际内存
+uint64
+kama_kvmdealloc(pagetable_t pgtbl, uint64 oldsz, uint64 newsz) {
+  if(newsz >= oldsz)
+    return oldsz;
+
+  if(PGROUNDUP(newsz) < PGROUNDUP(oldsz)){
+    int npages = (PGROUNDUP(oldsz) - PGROUNDUP(newsz)) / PGSIZE;
+    uvmunmap(pgtbl, PGROUNDUP(newsz), npages, 0);     // 0 表示不释放物理内存
+  }
+
+  return newsz;  
 }

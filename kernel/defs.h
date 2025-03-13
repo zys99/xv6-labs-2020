@@ -183,12 +183,15 @@ int             copyinstr(pagetable_t, char *, uint64, uint64);
 int             kama_vmprint(pagetable_t pagetable);
 pagetable_t     kama_kvminit_newpgtbl();
 void            kama_kvm_free_kernelpgtbl(pagetable_t pgtbl);
+int             copyin_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len);
+int             copyinstr_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
 // plic.c
 void            plicinit(void);
 void            plicinithart(void);
 int             plic_claim(void);
 void            plic_complete(int);
-
+int             kama_kvmcopymappings(pagetable_t src, pagetable_t dst, uint64 start, uint64 sz);
+uint64          kama_kvmdealloc(pagetable_t pgtbl, uint64 oldsz, uint64 newsz);
 // virtio_disk.c
 void            virtio_disk_init(void);
 void            virtio_disk_rw(struct buf *, int);

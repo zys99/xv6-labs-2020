@@ -51,6 +51,8 @@ exec(char *path, char **argv)
     uint64 sz1;
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
+    if(sz1 >= PLIC)     // 内存大小超过PLIC 进行错误处理
+      goto bad;
     sz = sz1;
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
@@ -107,7 +109,10 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(p->name, last, sizeof(p->name));
-    
+  
+  // 清除内核页表中对程序内存的旧映射，然后重新建立映射   0表示不释放内存
+  uvmunmap(p->kama_kernelpgtbl, 0, PGROUNDUP(oldsz) / PGSIZE, 0);
+  kama_kvmcopymappings(pagetable, p->kama_kernelpgtbl, 0, sz);
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
