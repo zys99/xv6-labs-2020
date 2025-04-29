@@ -5,7 +5,10 @@ _*
 *.asm
 *.sym
 *.img
+<<<<<<< HEAD
 *.pyc
+=======
+>>>>>>> util
 vectors.S
 bootblock
 entryother
@@ -19,3 +22,8 @@ user/usys.S
 myapi.key
 *-handin.tar.gz
 xv6.out*
+<<<<<<< HEAD
+=======
+.vagrant/
+submissions/
+>>>>>>> util
